@@ -1,0 +1,118 @@
+esphome:
+  name: m5stack-core2 
+  platform: esp32
+  board: m5stack-core2
+  platformio_options:
+    board_build.mcu: esp32
+    board_build.f_cpu: 240000000L
+
+i2c:
+   - id: bus_a
+     sda: GPIO21
+     scl: GPIO22
+     #scan: True
+
+# Enable logging
+logger:
+  level: DEBUG
+
+ # Enable Home Assistant API
+api:
+
+#ota:
+
+wifi:
+  ssid: "no-outer"
+  password: "yeahright"
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+#  ap:
+#    ssid: "Core2 hotspot"
+#    password: "abcdefgabcdefg"
+
+#captive_portal:
+
+
+binary_sensor:
+  - platform: status
+    name: "Core2 Status"
+    id: device_status
+  
+
+time:
+  - platform: homeassistant
+    id: esptime
+
+font:
+  - file: 'slkscr.ttf'
+    id: font1
+    size: 8
+
+  - file: 'BebasNeue-Regular.ttf'
+    id: font2
+    size: 22 
+
+  - file: 'arial.ttf'
+    id: font3
+    size: 14
+
+# Example configuration entry
+sensor:
+  - platform: axp192
+    address: 0x34
+    i2c_id: bus_a
+    update_interval: 30s
+    battery_level:
+      name: "M5 Core2 Battery Level"
+      id: "m5core2_batterylevel"
+
+globals:
+   - id: my_global_int
+     type: int
+     restore_value: no
+     initial_value: '0'
+
+spi: 
+  clk_pin: GPIO18
+  mosi_pin: GPIO23
+  miso_pin: GPIO38
+
+display:
+  - platform: ili9341
+    model: M5STACK
+    cs_pin: GPIO5
+    dc_pin: GPIO15
+    rotation: 0
+    id: core2_display
+    pages:
+      - id: page1
+        lambda: |-
+          it.filled_rectangle(40,  40, it.get_width()-80, it.get_height()-80, COLOR_OFF);
+          it.line(0,0,it.get_width(), it.get_height(), Color(123,0,19));
+          it.printf(30, 100, id(font3), Color(255,0,0), "Counter value:");
+          it.printf(30, 170, id(font3), Color(0,255,0), "Wifi connection status:");
+          it.printf(190, 100, id(font3), Color(255,0,0), "%1d", id(my_global_int));
+          if(wifi_wificomponent->is_connected()) {        
+              it.filled_circle(300, 185, 10, Color(0,255,0));
+          } else {
+              it.filled_circle(300, 185, 10, Color(255,0,0));
+          }
+          id(my_global_int) += 1;
+      - id: page2
+        lambda: |-
+          auto green = Color(0, 255, 0);
+          auto white = Color(255, 255, 255);
+          it.rectangle(0, 0, it.get_width(), it.get_height(), green);
+          it.rectangle(1, 1, it.get_width()-2, it.get_height()-2, green);
+          it.rectangle(2, 2, it.get_width()-4, it.get_height()-4, green);
+          it.rectangle(3, 3, it.get_width()-6, it.get_height()-6, green);
+          // Print time in HH:MM format
+          it.strftime(120, 80, id(font3), green, TextAlign::TOP_CENTER, "%H:%M", id(esptime).now());
+
+interval:
+  - interval: 1s
+    then:
+      - display.page.show_next: core2_display
+      - component.update: core2_display
+
+
